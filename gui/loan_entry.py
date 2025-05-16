@@ -8,8 +8,8 @@ class LoanEntryForm(tk.Toplevel):
         super().__init__(master)
         self.title("Add New Loan")
         self.geometry("400x400")
-        self.db = db  # Use the shared db connection
-        self.on_submit = on_submit  # Optional callback after submission
+        self.db = db
+        self.on_submit = on_submit
 
         vcmd_float = (self.register(self.validate_float), "%P")
         vcmd_int = (self.register(self.validate_int), "%P")
@@ -51,15 +51,22 @@ class LoanEntryForm(tk.Toplevel):
         if value == "":
             return True
         try:
-            float(value)
+            val = float(value)
+            if val < 0:
+                self.bell()
+                return False
             return True
         except ValueError:
+            self.bell()
             return False
 
     def validate_int(self, value):
         if value == "":
             return True
-        return value.isdigit()
+        if value.isdigit() and int(value) >= 0:
+            return True
+        self.bell()
+        return False
 
     def submit_loan(self):
         # Retrieve input values
@@ -76,13 +83,16 @@ class LoanEntryForm(tk.Toplevel):
             messagebox.showerror("Input Error", "Please fill in all required fields.")
             return
 
-        # Validate numeric fields
+        # Validate numeric fields and prevent negative values
         try:
             principal = float(principal)
             balance = float(balance)
             interest_rate = float(interest_rate)
             min_payment = float(min_payment)
             extra_payment = float(extra_payment)
+            if any(val < 0 for val in [principal, balance, interest_rate, min_payment, extra_payment]):
+                messagebox.showerror("Input Error", "Negative numbers are not allowed.")
+                return
         except ValueError:
             messagebox.showerror("Input Error", "Please enter valid numbers for all numeric fields.")
             return
@@ -92,7 +102,12 @@ class LoanEntryForm(tk.Toplevel):
         INSERT INTO loans (name, principal, current_balance, interest_rate, monthly_min_payment, extra_payment, first_due_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """
-        self.db.execute(insert_query, (name, principal, balance, interest_rate, min_payment, extra_payment, first_due_date))
+        try:
+            self.db.execute(insert_query, (name, principal, balance, interest_rate, min_payment, extra_payment, first_due_date))
+        except Exception as e:
+            messagebox.showerror("Database Error", f"Could not add loan: {e}")
+            return
+
         messagebox.showinfo("Success", "Loan added successfully.")
         if self.on_submit:
             self.on_submit()
