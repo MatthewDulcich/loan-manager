@@ -26,6 +26,7 @@ class TestStrategies(unittest.TestCase):
         # Test payment plan structure
         plan = strategy.generate_payment_plan(self.loans)
         self.assertTrue(isinstance(plan, list))
+        self.assertLessEqual(len(plan), 1000, "Plan should not exceed 1000 periods (infinite loop guard).")
         for period in plan:
             self.assertIn("date", period)
             self.assertIn("payments", period)
@@ -33,6 +34,9 @@ class TestStrategies(unittest.TestCase):
             self.assertTrue(isinstance(period["payments"], dict))
             for loan in self.loans:
                 self.assertIn(loan.name, period["payments"])
+        # Check that the last period's total_balance is not greater than the first
+        if plan:
+            self.assertLessEqual(plan[-1]["total_balance"], plan[0]["total_balance"] + 1e-2)
 
     def test_avalanche_strategy(self):
         strategy = AvalancheStrategy()
@@ -44,6 +48,7 @@ class TestStrategies(unittest.TestCase):
         # Test payment plan structure
         plan = strategy.generate_payment_plan(self.loans)
         self.assertTrue(isinstance(plan, list))
+        self.assertLessEqual(len(plan), 1000, "Plan should not exceed 1000 periods (infinite loop guard).")
         for period in plan:
             self.assertIn("date", period)
             self.assertIn("payments", period)
@@ -51,6 +56,8 @@ class TestStrategies(unittest.TestCase):
             self.assertTrue(isinstance(period["payments"], dict))
             for loan in self.loans:
                 self.assertIn(loan.name, period["payments"])
+        if plan:
+            self.assertLessEqual(plan[-1]["total_balance"], plan[0]["total_balance"] + 1e-2)
 
     def test_custom_strategy(self):
         strategy = CustomStrategy()
@@ -63,6 +70,7 @@ class TestStrategies(unittest.TestCase):
         # Test payment plan structure
         plan = strategy.generate_payment_plan(self.loans)
         self.assertTrue(isinstance(plan, list))
+        self.assertLessEqual(len(plan), 1000, "Plan should not exceed 1000 periods (infinite loop guard).")
         for period in plan:
             self.assertIn("date", period)
             self.assertIn("payments", period)
@@ -70,6 +78,8 @@ class TestStrategies(unittest.TestCase):
             self.assertTrue(isinstance(period["payments"], dict))
             for loan in self.loans:
                 self.assertIn(loan.name, period["payments"])
+        if plan:
+            self.assertLessEqual(plan[-1]["total_balance"], plan[0]["total_balance"] + 1e-2)
 
 if __name__ == '__main__':
     unittest.main()

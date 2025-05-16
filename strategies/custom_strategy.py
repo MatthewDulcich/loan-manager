@@ -58,7 +58,15 @@ class CustomStrategy(PayoffStrategy):
             if not hasattr(loan, "total_paid"):
                 loan.total_paid = 0
 
+        max_iterations = 1000
+        iteration = 0
+        previous_total_balance = None
+
         while any(loan.current_balance > 0 for loan in loans):
+            if iteration >= max_iterations:
+                print("Reached maximum iterations. Exiting loop to prevent overflow.")
+                break
+
             period_payments = {}
             for loan_id in self.loan_priority or [loan.id for loan in loans]:
                 loan = loan_map.get(loan_id)
@@ -85,18 +93,28 @@ class CustomStrategy(PayoffStrategy):
                     period_payments[loan.name] = 0
 
             total_balance = sum(max(loan.current_balance, 0) for loan in loans)
+
+            # Minimal balance change check
+            if previous_total_balance is not None:
+                balance_change = abs(total_balance - previous_total_balance)
+                if balance_change < 0.01:
+                    print("Minimal balance change detected. Exiting loop to prevent overflow.")
+                    break
+
+            previous_total_balance = total_balance
+
             payment_plan.append({
                 "date": payment_date.strftime("%Y-%m-%d"),
                 "payments": period_payments,
                 "total_balance": round(total_balance, 2)
             })
 
-            # Advance to next payment date (approximate next month)
-            payment_date += timedelta(days=30)
-
             # Prevent infinite loop if all payments are zero (shouldn't happen, but just in case)
             if all(p == 0 for p in period_payments.values()):
                 break
+
+            payment_date += timedelta(days=30)
+            iteration += 1
 
         return payment_plan
 

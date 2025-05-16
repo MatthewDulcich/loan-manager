@@ -32,7 +32,7 @@ if __name__ == "__main__":
             plan = []
             for i in range(3):
                 payments = {loan.name: 100.0 for loan in loans}
-                total_balance = sum(loan.current_balance - 100.0 * (i + 1) for loan in loans)
+                total_balance = sum(max(loan.current_balance - 100.0 * (i + 1), 0) for loan in loans)
                 plan.append({
                     "date": f"2025-0{i+6}-01",
                     "payments": payments,
