@@ -39,3 +39,12 @@ CREATE TABLE IF NOT EXISTS payments (
     FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE,
     FOREIGN KEY (strategy_id) REFERENCES payoff_strategies(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS loan_priority (
+    strategy_id INTEGER NOT NULL,
+    loan_id INTEGER NOT NULL,
+    priority INTEGER NOT NULL,
+    PRIMARY KEY (strategy_id, loan_id),
+    FOREIGN KEY (strategy_id) REFERENCES payoff_strategies(id) ON DELETE CASCADE,
+    FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+);

@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta
-import math
+from datetime import datetime, timedelta, date
 
 class Loan:
     def __init__(self, id, name, principal, current_balance, interest_rate,
@@ -14,20 +13,51 @@ class Loan:
         self.interest_rate = interest_rate  # Annual percentage rate
         self.monthly_min_payment = monthly_min_payment
         self.extra_payment = extra_payment
-        self.first_due_date = datetime.strptime(first_due_date, "%Y-%m-%d").date()
+        self.first_due_date = self._parse_date(first_due_date)
         self.interest_change_rate = interest_change_rate
         self.loan_term_months = loan_term_months
         self.lender = lender
         self.notes = notes
-        self.forbearance_start_date = (datetime.strptime(forbearance_start_date, "%Y-%m-%d").date()
-                                       if forbearance_start_date else None)
-        self.forbearance_end_date = (datetime.strptime(forbearance_end_date, "%Y-%m-%d").date()
-                                     if forbearance_end_date else None)
+        self.forbearance_start_date = self._parse_date(forbearance_start_date)
+        self.forbearance_end_date = self._parse_date(forbearance_end_date)
         self.total_paid = total_paid
-        self.last_payment_date = (datetime.strptime(last_payment_date, "%Y-%m-%d").date()
-                                  if last_payment_date else None)
-        self.created_at = (datetime.strptime(created_at, "%Y-%m-%d").date()
-                           if created_at else datetime.today().date())
+        self.last_payment_date = self._parse_date(last_payment_date)
+        self.created_at = self._parse_date(created_at) if created_at else datetime.today().date()
+
+    @staticmethod
+    def _parse_date(value):
+        if value is None:
+            return None
+        if isinstance(value, date):
+            return value
+        for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S"):
+            try:
+                return datetime.strptime(value, fmt).date()
+            except (ValueError, TypeError):
+                continue
+        raise ValueError(f"Date '{value}' is not in a recognized format")
+
+    @classmethod
+    def from_row(cls, row):
+        return cls(
+            id=row["id"],
+            name=row["name"],
+            principal=row["principal"],
+            current_balance=row["current_balance"],
+            interest_rate=row["interest_rate"],
+            monthly_min_payment=row["monthly_min_payment"],
+            extra_payment=row["extra_payment"],
+            first_due_date=row["first_due_date"],
+            interest_change_rate=row["interest_change_rate"],
+            loan_term_months=row["loan_term_months"],
+            lender=row["lender"],
+            notes=row["notes"],
+            forbearance_start_date=row["forbearance_start_date"],
+            forbearance_end_date=row["forbearance_end_date"],
+            total_paid=row["total_paid"],
+            last_payment_date=row["last_payment_date"],
+            created_at=row["created_at"]
+        )
 
     def is_in_forbearance(self, check_date=None):
         """Check if the loan is in forbearance on the given date."""

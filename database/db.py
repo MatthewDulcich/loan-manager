@@ -1,5 +1,7 @@
 import sqlite3
 import os
+from typing import List
+from models import Loan
 
 # Define the path to your database file
 DB_PATH = os.path.join(os.path.dirname(__file__), 'loans.db')
@@ -64,13 +66,36 @@ class Database:
         """Fetch a single row from a query."""
         cursor = self.execute(query, params)
         return cursor.fetchone()
+
+    def add_loan_priority(self, strategy_id: int, loan_id: int, priority: int):
+        """
+        Add or update the priority of a loan within a specific strategy.
+        """
+        query = """
+            INSERT INTO loan_priority (strategy_id, loan_id, priority)
+            VALUES (?, ?, ?)
+            ON CONFLICT(strategy_id, loan_id) DO UPDATE SET priority=excluded.priority;
+        """
+        self.execute(query, (strategy_id, loan_id, priority))
+
+    def get_loans_by_strategy(self, strategy_id: int) -> List[Loan]:
+        """
+        Retrieve loans associated with a specific strategy, ordered by priority.
+        """
+        query = """
+            SELECT l.*
+            FROM loans l
+            JOIN loan_priority lp ON l.id = lp.loan_id
+            WHERE lp.strategy_id = ?
+            ORDER BY lp.priority ASC;
+        """
+        rows = self.fetchall(query, (strategy_id,))
+        return [Loan.from_row(row) for row in rows]
     
 if __name__ == "__main__":
     db = Database()
     db.connect()
     db.init_schema()
-
-    print(f"Connection open? {db.conn is not None}")  # Add this line
 
     # Example: Insert a new loan
     insert_query = """
@@ -80,10 +105,12 @@ if __name__ == "__main__":
     loan_data = ("Student Loan A", 10000.0, 10000.0, 5.0, 150.0, "2025-06-01")
     db.execute(insert_query, loan_data)
 
-    # Example: Retrieve all loans
-    select_query = "SELECT * FROM loans"
-    loans = db.fetchall(select_query)
+    # Example: Add loan priority
+    db.add_loan_priority(strategy_id=1, loan_id=1, priority=1)
+
+    # Example: Retrieve loans by strategy
+    loans = db.get_loans_by_strategy(strategy_id=1)
     for loan in loans:
-        print(dict(loan))
+        print(vars(loan))
 
     db.close()
