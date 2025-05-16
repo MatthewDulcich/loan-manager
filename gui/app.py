@@ -29,7 +29,8 @@ class LoanManagerApp(tk.Tk):
         export_button.grid(row=0, column=1, padx=10, pady=5, sticky="w")
 
         # Treeview for loans
-        self.tree = ttk.Treeview(self, columns=("Name", "Principal", "Balance", "Interest Rate", "Min Payment", "Extra Payment", "First Due Date"), show='headings')
+        self.tree = ttk.Treeview(self, columns=("ID", "Name", "Principal", "Balance", "Interest Rate", "Min Payment", "Extra Payment", "First Due Date"), show='headings')
+        self.tree.column("ID", width=0, stretch=False)  # Hide the ID column
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col)
         self.tree.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
@@ -71,6 +72,7 @@ class LoanManagerApp(tk.Tk):
             loans = strategy.prioritize(loans)
         for loan in loans:
             self.tree.insert('', 'end', values=(
+                loan.id,  # Add ID as first value
                 loan.name,
                 f"${loan.principal:,.2f}",
                 f"${loan.current_balance:,.2f}",
@@ -91,14 +93,10 @@ class LoanManagerApp(tk.Tk):
             messagebox.showwarning("Delete Loan", "Please select a loan to delete.")
             return
         loan_values = self.tree.item(selected[0])["values"]
-        loan_name = loan_values[0]
-        # Find loan by name (or better: store loan id as hidden column)
-        loans = self.get_loans()
-        loan = next((l for l in loans if l.name == loan_name), None)
-        if loan:
-            if messagebox.askyesno("Delete Loan", f"Are you sure you want to delete '{loan.name}'?"):
-                self.db.delete_loan(loan.id)
-                self.load_loans()
+        loan_id = loan_values[0]
+        if messagebox.askyesno("Delete Loan", f"Are you sure you want to delete '{loan_values[1]}'?"):
+            self.db.delete_loan(loan_id)
+            self.load_loans()
 
     def export_payoff_plan(self):
         loans = self.get_loans()
