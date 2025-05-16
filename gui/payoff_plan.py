@@ -77,13 +77,29 @@ class PayoffPlanPopup(tk.Toplevel):
         # Clear existing rows
         for row in self.tree.get_children():
             self.tree.delete(row)
+
+        # Update columns to include both payment and balance for each loan
+        columns = ["Date"]
+        for loan_name in self.loan_names:
+            columns.append(f"{loan_name} Payment")
+            columns.append(f"{loan_name} Balance")
+        columns += ["Total Payment", "Total Balance"]
+
+        # Update treeview columns
+        self.tree["columns"] = columns
+        for col in columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, anchor="center", width=140 if "Payment" in col or "Balance" in col else 100)
+
         # Insert plan data
         for period in plan:
             row = [period["date"]]
             total_payment = 0
             for loan_name in self.loan_names:
                 payment = period["payments"].get(loan_name, 0)
+                balance = period["balances"].get(loan_name, 0)  # Get the balance for the loan
                 row.append(f"${payment:,.2f}" if payment > 0 else "")
+                row.append(f"${balance:,.2f}" if balance > 0 else "")
                 total_payment += payment
             row.append(f"${total_payment:,.2f}")
             row.append(f"${period.get('total_balance', 0):,.2f}")

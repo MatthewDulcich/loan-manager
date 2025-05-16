@@ -98,6 +98,7 @@ def generate_payment_plan(prioritized_loans: List[Loan]) -> List[Dict]:
         payment_plan.append({
             "date": payment_date.strftime("%Y-%m-%d"),
             "payments": period_payments,
+            "balances": {loan.name: loan.current_balance for loan in loans},  # Add balances here
             "total_balance": round(total_balance, 2)
         })
 
