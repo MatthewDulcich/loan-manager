@@ -5,13 +5,13 @@ from gui.loan_entry import LoanEntryForm
 from models.loan import Loan
 
 class LoanManagerApp(tk.Tk):
-    def __init__(self):
+    def __init__(self, db=None):
         super().__init__()
         self.title("Loan Manager")
         self.geometry("800x600")
 
         # Initialize the database
-        self.db = Database()
+        self.db = db if db else Database()
         self.db.connect()
 
         # Create the Treeview to display loans

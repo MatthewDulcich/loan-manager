@@ -8,13 +8,10 @@ def main():
     db.connect()
     db.init_schema()
 
-    # Set up the main application window
-    root = tk.Tk()
-    root.title("Loan Manager")
-    root.geometry("800x600")
-
     # Initialize and run the main application
-    app = LoanManagerApp(master=root, db=db)
+    app = LoanManagerApp(db=db)
+    app.title("Loan Manager")
+    app.geometry("800x600")
     app.mainloop()
 
     # Close the database connection upon exiting the app
