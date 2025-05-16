@@ -1,5 +1,3 @@
-# Configuration settings (DB name, constants)# config.py
-
 import os
 from pathlib import Path
 
