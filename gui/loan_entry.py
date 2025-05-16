@@ -4,10 +4,11 @@ from tkcalendar import DateEntry
 from database.db import Database
 
 class LoanEntryForm(tk.Toplevel):
-    def __init__(self, master=None, on_submit=None):
+    def __init__(self, master=None, db=None, on_submit=None):
         super().__init__(master)
         self.title("Add New Loan")
         self.geometry("400x400")
+        self.db = db  # Use the shared db connection
         self.on_submit = on_submit  # Optional callback after submission
 
         vcmd_float = (self.register(self.validate_float), "%P")
@@ -86,15 +87,12 @@ class LoanEntryForm(tk.Toplevel):
             messagebox.showerror("Input Error", "Please enter valid numbers for all numeric fields.")
             return
 
-        # Insert into database
-        db = Database()
-        db.connect()
+        # Use the shared db connection
         insert_query = """
         INSERT INTO loans (name, principal, current_balance, interest_rate, monthly_min_payment, extra_payment, first_due_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """
-        db.execute(insert_query, (name, principal, balance, interest_rate, min_payment, extra_payment, first_due_date))
-        db.close()
+        self.db.execute(insert_query, (name, principal, balance, interest_rate, min_payment, extra_payment, first_due_date))
         messagebox.showinfo("Success", "Loan added successfully.")
         if self.on_submit:
             self.on_submit()

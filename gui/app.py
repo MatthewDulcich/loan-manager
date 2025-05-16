@@ -54,8 +54,7 @@ class LoanManagerApp(tk.Tk):
     def open_add_loan_form(self):
         def on_submit():
             self.load_loans()
-
-        LoanEntryForm(master=self, on_submit=on_submit)
+        LoanEntryForm(master=self, db=self.db, on_submit=on_submit)
 
 if __name__ == "__main__":
     app = LoanManagerApp()
