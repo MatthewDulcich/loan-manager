@@ -23,12 +23,34 @@ class TestStrategies(unittest.TestCase):
         self.assertEqual(balances, sorted(balances),
                          "SnowballStrategy should prioritize loans with smallest balance first.")
 
+        # Test payment plan structure
+        plan = strategy.generate_payment_plan(self.loans)
+        self.assertTrue(isinstance(plan, list))
+        for period in plan:
+            self.assertIn("date", period)
+            self.assertIn("payments", period)
+            self.assertIn("total_balance", period)
+            self.assertTrue(isinstance(period["payments"], dict))
+            for loan in self.loans:
+                self.assertIn(loan.name, period["payments"])
+
     def test_avalanche_strategy(self):
         strategy = AvalancheStrategy()
         prioritized_loans = strategy.prioritize(self.loans)
         rates = [loan.interest_rate for loan in prioritized_loans]
         self.assertEqual(rates, sorted(rates, reverse=True),
                          "AvalancheStrategy should prioritize loans with highest interest rate first.")
+
+        # Test payment plan structure
+        plan = strategy.generate_payment_plan(self.loans)
+        self.assertTrue(isinstance(plan, list))
+        for period in plan:
+            self.assertIn("date", period)
+            self.assertIn("payments", period)
+            self.assertIn("total_balance", period)
+            self.assertTrue(isinstance(period["payments"], dict))
+            for loan in self.loans:
+                self.assertIn(loan.name, period["payments"])
 
     def test_custom_strategy(self):
         strategy = CustomStrategy()
@@ -37,6 +59,17 @@ class TestStrategies(unittest.TestCase):
         names = [loan.name for loan in prioritized_loans]
         self.assertEqual(names, sorted(names),
                          "CustomStrategy should prioritize loans by name alphabetically.")
+
+        # Test payment plan structure
+        plan = strategy.generate_payment_plan(self.loans)
+        self.assertTrue(isinstance(plan, list))
+        for period in plan:
+            self.assertIn("date", period)
+            self.assertIn("payments", period)
+            self.assertIn("total_balance", period)
+            self.assertTrue(isinstance(period["payments"], dict))
+            for loan in self.loans:
+                self.assertIn(loan.name, period["payments"])
 
 if __name__ == '__main__':
     unittest.main()

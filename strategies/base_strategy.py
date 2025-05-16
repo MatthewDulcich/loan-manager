@@ -18,13 +18,10 @@ class PayoffStrategy(ABC):
 
         Returns:
             List[Dict]: A list of dictionaries representing the payment plan.
-                        Each dictionary should contain details such as:
-                        - 'loan_id': Identifier of the loan
-                        - 'payment_date': Date of the payment
-                        - 'payment_amount': Total payment amount
-                        - 'principal_paid': Amount applied to the principal
-                        - 'interest_paid': Amount applied to the interest
-                        - 'remaining_balance': Remaining balance after the payment
+                        Each dictionary should contain:
+                        - 'date': Date of the payment period (str)
+                        - 'payments': Dict mapping loan names to payment amounts for this period
+                        - 'total_balance': Total remaining balance across all loans after this period
         """
         pass
 
@@ -32,9 +29,16 @@ if __name__ == "__main__":
     # Example usage
     class DummyStrategy(PayoffStrategy):
         def generate_payment_plan(self, loans: List[Loan]) -> List[Dict]:
-            return [{"loan_id": loan.id, "payment_date": "2025-06-01", "payment_amount": 100.0,
-                     "principal_paid": 80.0, "interest_paid": 20.0, "remaining_balance": loan.current_balance - 80.0}
-                    for loan in loans]
+            plan = []
+            for i in range(3):
+                payments = {loan.name: 100.0 for loan in loans}
+                total_balance = sum(loan.current_balance - 100.0 * (i + 1) for loan in loans)
+                plan.append({
+                    "date": f"2025-0{i+6}-01",
+                    "payments": payments,
+                    "total_balance": total_balance
+                })
+            return plan
 
     # Create a dummy loan for demonstration
     dummy_loan = Loan(

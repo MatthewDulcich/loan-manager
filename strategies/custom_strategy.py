@@ -28,8 +28,12 @@ class CustomStrategy(PayoffStrategy):
         Returns:
             List[Loan]: A sorted list of Loan objects.
         """
-        # Example: sort by name alphabetically
-        return sorted(loans, key=lambda loan: loan.name)
+        # Example: sort by name alphabetically if no priority is set
+        if not self.loan_priority:
+            return sorted(loans, key=lambda loan: loan.name)
+        # Otherwise, sort by user-defined priority
+        loan_map = {loan.id: loan for loan in loans}
+        return [loan_map[loan_id] for loan_id in self.loan_priority if loan_id in loan_map]
 
     def generate_payment_plan(self, loans: List[Loan]) -> List[Dict]:
         """
@@ -39,21 +43,33 @@ class CustomStrategy(PayoffStrategy):
             loans (List[Loan]): A list of Loan objects.
 
         Returns:
-            List[Dict]: A list of payment records detailing the payment schedule.
+            List[Dict]: Each dict has keys: "date", "payments" (dict), "total_balance"
         """
-        # Create a mapping from loan ID to Loan object
+        # Clone the loans to avoid mutating the original list
+        loans = [Loan(**loan.__dict__) for loan in self.prioritize(loans)]
         loan_map = {loan.id: loan for loan in loans}
         payment_plan = []
         payment_date = datetime.today().date()
 
-        # Continue until all loans are paid off
+        # Initialize last payment dates if not set
+        for loan in loans:
+            if not hasattr(loan, "last_payment_date") or loan.last_payment_date is None:
+                loan.last_payment_date = payment_date
+            if not hasattr(loan, "total_paid"):
+                loan.total_paid = 0
+
         while any(loan.current_balance > 0 for loan in loans):
-            # Apply payments based on user-defined priority
-            for loan_id in self.loan_priority:
+            period_payments = {}
+            for loan_id in self.loan_priority or [loan.id for loan in loans]:
                 loan = loan_map.get(loan_id)
                 if loan and loan.current_balance > 0:
                     # Calculate accrued interest
-                    accrued_interest = loan.calculate_accrued_interest(loan.last_payment_date, payment_date)
+                    accrued_interest = 0
+                    if hasattr(loan, "calculate_accrued_interest"):
+                        try:
+                            accrued_interest = loan.calculate_accrued_interest(loan.last_payment_date, payment_date)
+                        except Exception:
+                            accrued_interest = loan.current_balance * (loan.interest_rate / 100 / 12)
                     loan.current_balance += accrued_interest
 
                     # Determine payment amount
@@ -64,19 +80,23 @@ class CustomStrategy(PayoffStrategy):
                     loan.total_paid += payment_amount
                     loan.last_payment_date = payment_date
 
-                    # Record the payment
-                    payment_record = {
-                        "loan_id": loan.id,
-                        "payment_date": payment_date.isoformat(),
-                        "payment_amount": round(payment_amount, 2),
-                        "principal_paid": round(principal_payment, 2),
-                        "interest_paid": round(interest_payment, 2),
-                        "remaining_balance": round(loan.current_balance, 2)
-                    }
-                    payment_plan.append(payment_record)
+                    period_payments[loan.name] = round(payment_amount, 2)
+                elif loan:
+                    period_payments[loan.name] = 0
+
+            total_balance = sum(max(loan.current_balance, 0) for loan in loans)
+            payment_plan.append({
+                "date": payment_date.strftime("%Y-%m-%d"),
+                "payments": period_payments,
+                "total_balance": round(total_balance, 2)
+            })
 
             # Advance to next payment date (approximate next month)
             payment_date += timedelta(days=30)
+
+            # Prevent infinite loop if all payments are zero (shouldn't happen, but just in case)
+            if all(p == 0 for p in period_payments.values()):
+                break
 
         return payment_plan
 

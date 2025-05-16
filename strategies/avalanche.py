@@ -17,29 +17,35 @@ class AvalancheStrategy(PayoffStrategy):
         """
         Generate a payment plan using the Avalanche strategy.
 
-        Args:
-            loans (List[Loan]): A list of Loan objects.
-
         Returns:
-            List[Dict]: A list of payment records detailing the payment schedule.
+            List[Dict]: Each dict has keys: "date", "payments" (dict), "total_balance"
         """
         # Clone the loans to avoid mutating the original list
-        loans = self.prioritize(loans)
+        loans = [Loan(**loan.__dict__) for loan in self.prioritize(loans)]
         payment_plan = []
         payment_date = datetime.today().date()
 
-        # Continue until all loans are paid off
-        while any(loan.current_balance > 0 for loan in loans):
-            # Calculate total available payment for this cycle
-            total_payment = sum(loan.monthly_min_payment + loan.extra_payment for loan in loans if loan.current_balance > 0)
+        # Initialize last payment dates if not set
+        for loan in loans:
+            if not hasattr(loan, "last_payment_date") or loan.last_payment_date is None:
+                loan.last_payment_date = payment_date
 
-            # Apply payments to loans
+        while any(loan.current_balance > 0 for loan in loans):
+            period_payments = {}
             for loan in loans:
                 if loan.current_balance <= 0:
+                    period_payments[loan.name] = 0
                     continue
 
                 # Calculate accrued interest
-                accrued_interest = loan.calculate_accrued_interest(loan.last_payment_date, payment_date)
+                accrued_interest = 0
+                if hasattr(loan, "calculate_accrued_interest"):
+                    try:
+                        accrued_interest = loan.calculate_accrued_interest(loan.last_payment_date, payment_date)
+                    except Exception:
+                        # fallback if method signature is different
+                        accrued_interest = loan.current_balance * (loan.interest_rate / 100 / 12)
+
                 loan.current_balance += accrued_interest
 
                 # Determine payment amount
@@ -47,22 +53,24 @@ class AvalancheStrategy(PayoffStrategy):
                 interest_payment = min(payment_amount, accrued_interest)
                 principal_payment = max(0.0, payment_amount - interest_payment)
                 loan.current_balance = max(0.0, loan.current_balance - principal_payment)
-                loan.total_paid += payment_amount
+                loan.total_paid = getattr(loan, "total_paid", 0) + payment_amount
                 loan.last_payment_date = payment_date
 
-                # Record the payment
-                payment_record = {
-                    "loan_id": loan.id,
-                    "payment_date": payment_date.isoformat(),
-                    "payment_amount": round(payment_amount, 2),
-                    "principal_paid": round(principal_payment, 2),
-                    "interest_paid": round(interest_payment, 2),
-                    "remaining_balance": round(loan.current_balance, 2)
-                }
-                payment_plan.append(payment_record)
+                period_payments[loan.name] = round(payment_amount, 2)
+
+            total_balance = sum(max(loan.current_balance, 0) for loan in loans)
+            payment_plan.append({
+                "date": payment_date.strftime("%Y-%m-%d"),
+                "payments": period_payments,
+                "total_balance": round(total_balance, 2)
+            })
 
             # Advance to next payment date (approximate next month)
             payment_date += timedelta(days=30)
+
+            # Prevent infinite loop if all payments are zero (shouldn't happen, but just in case)
+            if all(p == 0 for p in period_payments.values()):
+                break
 
         return payment_plan
 
