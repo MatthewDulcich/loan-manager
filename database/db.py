@@ -91,6 +91,11 @@ class Database:
         """
         rows = self.fetchall(query, (strategy_id,))
         return [Loan.from_row(row) for row in rows]
+
+    def delete_loan(self, loan_id):
+        """Delete a loan by its ID."""
+        with self.conn:
+            self.conn.execute("DELETE FROM loans WHERE id = ?", (loan_id,))
     
 if __name__ == "__main__":
     db = Database()

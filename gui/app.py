@@ -38,7 +38,11 @@ class LoanManagerApp(tk.Tk):
 
         # Add Loan button
         add_loan_button = tk.Button(self, text="Add Loan", command=self.open_add_loan_form)
-        add_loan_button.grid(row=2, column=0, columnspan=2, pady=5)
+        add_loan_button.grid(row=2, column=0, pady=5, sticky="w")
+
+        # Delete Loan button
+        delete_loan_button = tk.Button(self, text="Delete Loan", command=self.delete_selected_loan)
+        delete_loan_button.grid(row=2, column=1, pady=5, sticky="e")
 
         self.load_loans()
 
@@ -80,6 +84,21 @@ class LoanManagerApp(tk.Tk):
         def on_submit():
             self.load_loans()
         LoanEntryForm(master=self, db=self.db, on_submit=on_submit)
+
+    def delete_selected_loan(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Delete Loan", "Please select a loan to delete.")
+            return
+        loan_values = self.tree.item(selected[0])["values"]
+        loan_name = loan_values[0]
+        # Find loan by name (or better: store loan id as hidden column)
+        loans = self.get_loans()
+        loan = next((l for l in loans if l.name == loan_name), None)
+        if loan:
+            if messagebox.askyesno("Delete Loan", f"Are you sure you want to delete '{loan.name}'?"):
+                self.db.delete_loan(loan.id)
+                self.load_loans()
 
     def export_payoff_plan(self):
         loans = self.get_loans()
