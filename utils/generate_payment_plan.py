@@ -13,62 +13,80 @@ def generate_payment_plan(prioritized_loans: List[Loan]) -> List[Dict]:
         List[Dict]: Each dict has keys: "date", "payments" (dict), "total_balance"
     """
     loans = [Loan(**loan.__dict__) for loan in prioritized_loans]
+    loans.sort(key=lambda l: l.current_balance)
     payment_plan = []
     payment_date = datetime.today().date()
 
-    # Initialize last payment dates if not set
+    # Initialize last payment dates and adjusted payments
     for loan in loans:
-        if not hasattr(loan, "last_payment_date") or loan.last_payment_date is None:
-            loan.last_payment_date = payment_date
-        if not hasattr(loan, "total_paid"):
-            loan.total_paid = 0
+        loan.last_payment_date = payment_date
+        loan.total_paid = 0
+        loan.adjusted_min_payment = loan.monthly_min_payment
 
     max_iterations = 1000
     iteration = 0
     previous_total_balance = None
 
+    user_extra_cash = sum(loan.extra_payment for loan in loans)
+
     while any(loan.current_balance > 0 for loan in loans):
+        loans.sort(key=lambda l: l.current_balance)
+
         if iteration >= max_iterations:
             print("Reached maximum iterations. Exiting loop to prevent overflow.")
             break
 
         period_payments = {}
-        total_extra_payment = sum(loan.extra_payment for loan in loans if loan.current_balance > 0)
+        total_extra_payment = user_extra_cash
+        current_cycle_freed = 0.0
 
+        # Pay minimums
         for loan in loans:
             if loan.current_balance <= 0:
-                period_payments[loan.name] = 0
+                period_payments[loan.name] = 0.0
                 continue
 
-            # Calculate accrued interest
+            # Interest
             accrued_interest = loan.current_balance * (loan.interest_rate / 100 / 12)
             loan.current_balance += accrued_interest
 
-            # Determine payment amount
-            payment_amount = loan.monthly_min_payment + loan.extra_payment
-            interest_payment = min(payment_amount, accrued_interest)
-            principal_payment = max(0.0, payment_amount - interest_payment)
+            # Minimum payment
+            interest_payment = min(loan.adjusted_min_payment, accrued_interest)
+            principal_payment = max(0.0, loan.adjusted_min_payment - interest_payment)
             loan.current_balance = max(0.0, loan.current_balance - principal_payment)
-            loan.total_paid += payment_amount
+            loan.total_paid += loan.adjusted_min_payment
             loan.last_payment_date = payment_date
 
-            period_payments[loan.name] = round(payment_amount, 2)
+            period_payments[loan.name] = round(loan.adjusted_min_payment, 2)
 
-            # Redistribute extra payment if loan is paid off
+            # If loan is paid off, defer its min payment for next month and store freed permanently
             if loan.current_balance == 0:
-                total_extra_payment += loan.monthly_min_payment + loan.extra_payment
-                loan.extra_payment = 0
+                current_cycle_freed += loan.adjusted_min_payment
+                loan.adjusted_min_payment = 0.0
 
-        # Redistribute extra payments to remaining loans
-        remaining_loans = [loan for loan in loans if loan.current_balance > 0]
-        if remaining_loans and total_extra_payment > 0:
-            extra_per_loan = total_extra_payment / len(remaining_loans)
-            for loan in remaining_loans:
-                loan.extra_payment += extra_per_loan
+        # Redirect freed payments once to next loan
+        if current_cycle_freed > 0:
+            # Re-sort to find next nonzero balance loan
+            loans.sort(key=lambda l: l.current_balance)
+            for loan in loans:
+                if loan.current_balance > 0:
+                    loan.adjusted_min_payment += current_cycle_freed
+                    break
+
+        # Redistribute total extra payment to remaining loans
+        for loan in loans:
+            if loan.current_balance > 0 and total_extra_payment > 0:
+                extra_payment = min(total_extra_payment, loan.current_balance)
+                loan.current_balance -= extra_payment
+                loan.total_paid += extra_payment
+                period_payments[loan.name] += round(extra_payment, 2)
+                total_extra_payment -= extra_payment
+            if total_extra_payment <= 0:
+                break
 
         total_balance = sum(max(loan.current_balance, 0) for loan in loans)
 
-        # Minimal balance change check
+        # Detect stagnation
         if previous_total_balance is not None:
             balance_change = abs(total_balance - previous_total_balance)
             if balance_change < 0.01:
@@ -83,7 +101,6 @@ def generate_payment_plan(prioritized_loans: List[Loan]) -> List[Dict]:
             "total_balance": round(total_balance, 2)
         })
 
-        # Prevent infinite loop if all payments are zero (shouldn't happen, but just in case)
         if all(p == 0 for p in period_payments.values()):
             break
 
