@@ -9,7 +9,7 @@ class CustomStrategy(PayoffStrategy):
     Allows users to define their own loan repayment order.
     """
 
-    def __init__(self, loan_priority: List[int]):
+    def __init__(self, loan_priority=None):
         """
         Initialize the custom strategy with a specific loan priority order.
 
@@ -17,6 +17,19 @@ class CustomStrategy(PayoffStrategy):
             loan_priority (List[int]): A list of loan IDs in the desired payoff order.
         """
         self.loan_priority = loan_priority
+
+    def prioritize(self, loans):
+        """
+        Prioritize loans based on a custom sorting logic.
+
+        Args:
+            loans (List[Loan]): A list of Loan objects.
+
+        Returns:
+            List[Loan]: A sorted list of Loan objects.
+        """
+        # Example: sort by name alphabetically
+        return sorted(loans, key=lambda loan: loan.name)
 
     def generate_payment_plan(self, loans: List[Loan]) -> List[Dict]:
         """

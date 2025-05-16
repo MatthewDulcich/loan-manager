@@ -9,6 +9,10 @@ class AvalancheStrategy(PayoffStrategy):
     Prioritizes paying off loans with the highest interest rates first.
     """
 
+    def prioritize(self, loans):
+        # Sort by interest_rate descending (highest first)
+        return sorted(loans, key=lambda loan: loan.interest_rate, reverse=True)
+
     def generate_payment_plan(self, loans: List[Loan]) -> List[Dict]:
         """
         Generate a payment plan using the Avalanche strategy.
@@ -20,7 +24,7 @@ class AvalancheStrategy(PayoffStrategy):
             List[Dict]: A list of payment records detailing the payment schedule.
         """
         # Clone the loans to avoid mutating the original list
-        loans = sorted(loans, key=lambda loan: loan.interest_rate, reverse=True)
+        loans = self.prioritize(loans)
         payment_plan = []
         payment_date = datetime.today().date()
 

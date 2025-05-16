@@ -9,6 +9,10 @@ class SnowballStrategy(PayoffStrategy):
     Prioritizes paying off loans with the smallest balances first.
     """
 
+    def prioritize(self, loans):
+        # Sort by current_balance ascending (smallest first)
+        return sorted(loans, key=lambda loan: loan.current_balance)
+
     def generate_payment_plan(self, loans: List[Loan]) -> List[Dict]:
         """
         Generate a payment plan using the Snowball strategy.
@@ -20,7 +24,7 @@ class SnowballStrategy(PayoffStrategy):
             List[Dict]: A list of payment records detailing the payment schedule.
         """
         # Clone and sort the loans by current balance in ascending order
-        loans = sorted(loans, key=lambda loan: loan.current_balance)
+        loans = self.prioritize(loans)
         payment_plan = []
         payment_date = datetime.today().date()
 
