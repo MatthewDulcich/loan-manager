@@ -213,19 +213,39 @@ class PayoffPlanPopup(tk.Toplevel):
             extra_cash = period.get("extra_cash", 0)
             print(f"Row {idx}, Extra Cash: {extra_cash}")  # Debug statement
 
-            # Add extra cash to the total payment for the current period
-            period["total_payment"] = sum(period["payments"].values()) + extra_cash
+            # Determine the starting balances for this row
+            if idx == 0:  # If this is the very first row in the plan
+                starting_balances = {loan.name: loan.current_balance for loan in self.loans}
+            elif idx == start_row:  # If this is the first row being recalculated
+                starting_balances = self.plan[idx - 1]["balances"]
+            else:  # For all other rows
+                starting_balances = self.plan[idx - 1]["balances"]
 
-            # Redistribute the extra cash to the loans
-            extra_pool = extra_cash
-            for loan in sorted(self.loans, key=lambda l: l.interest_rate, reverse=True):  # Example: prioritize by highest interest
-                if loan.current_balance <= 0 or extra_pool <= 0:
-                    continue
-                bonus = min(extra_pool, loan.current_balance)
-                loan.current_balance -= bonus
-                loan.total_paid += bonus
-                period["payments"][loan.name] = period["payments"].get(loan.name, 0.0) + round(bonus, 2)
-                extra_pool -= bonus
+            # Calculate payments and update balances for this row
+            period["payments"] = {}
+            ending_balances = {}  # Track ending balances for this row
+            for loan in self.loans:
+                loan_name = loan.name
+                starting_balance = starting_balances[loan_name]
+
+                # Apply the minimum payment and extra cash (if any)
+                payment = loan.monthly_min_payment
+                if extra_cash > 0:
+                    extra_payment = min(extra_cash, starting_balance - payment)
+                    payment += extra_payment
+                    extra_cash -= extra_payment
+
+                # Calculate the new balance after the payment
+                new_balance = starting_balance - payment
+                period["payments"][loan_name] = round(payment, 2)
+                ending_balances[loan_name] = round(new_balance, 2)
+
+            # Update the balances for the loans in this period
+            period["balances"] = ending_balances
+
+            # Propagate the ending balances to the next row
+            if idx + 1 < len(self.plan):
+                self.plan[idx + 1]["balances"] = ending_balances
 
         # Refresh the display to show updated rows
         self.display_plan(self.plan)
