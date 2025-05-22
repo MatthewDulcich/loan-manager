@@ -1,6 +1,7 @@
 from typing import List, Dict
 from datetime import datetime, timedelta
 from models.loan import Loan
+from tkinter import ttk
 
 def generate_payment_plan(prioritized_loans: List[Loan], user_extra_cash: float) -> List[Dict]:
     """
@@ -76,6 +77,23 @@ def generate_payment_plan(prioritized_loans: List[Loan], user_extra_cash: float)
             loan.total_paid += bonus
             period_payments[loan.name] = period_payments.get(loan.name, 0.0) + round(bonus, 2)
             extra_pool -= bonus
+
+        # Apply extra cash for each period
+        for idx, period in enumerate(payment_plan):
+            extra_cash = period.get("extra_cash", 0)  # Get extra cash for this period
+            extra_pool += extra_cash  # Add it to the extra pool
+
+            # Add extra cash to the total payment for the current period
+            period["total_payment"] += extra_cash
+
+            for loan in loans:
+                if loan.current_balance <= 0 or extra_pool <= 0:
+                    continue
+                bonus = min(extra_pool, loan.current_balance)
+                loan.current_balance -= bonus
+                loan.total_paid += bonus
+                period_payments[loan.name] = period_payments.get(loan.name, 0.0) + round(bonus, 2)
+                extra_pool -= bonus
 
         # 2a) Ensure total_payment equals fixed_budget
         actual_total = sum(period_payments.values())

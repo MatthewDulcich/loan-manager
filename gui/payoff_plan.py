@@ -1,5 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkinter.simpledialog import askfloat  # Import askfloat from tkinter.simpledialog
+from utils.generate_payment_plan import generate_payment_plan
+
 
 class PayoffPlanPopup(tk.Toplevel):
     def __init__(self, master, plan, loans, strategy=None, recalc_callback=None):
@@ -41,26 +44,34 @@ class PayoffPlanPopup(tk.Toplevel):
 
         # --- Table area ---
         loan_names = [loan.name for loan in loans]
-        columns = ["Date"] + loan_names + ["Total Payment", "Total Balance"]
+        columns = ["Date"] + loan_names + ["Extra Payment", "Total Minimum Payment", "Total Payment", "Total Balance"]
 
         tree_frame = tk.Frame(self)
         tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         tree_scroll = tk.Scrollbar(tree_frame)
         tree_scroll.pack(side="right", fill="y")
-        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", yscrollcommand=tree_scroll.set)
-        self.tree.pack(side="left", fill="both", expand=True)
-        tree_scroll.config(command=self.tree.yview)
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=20)
 
-        # Set column headers and widths
+        # Configure column headings
         self.tree.heading("Date", text="Date")
-        self.tree.column("Date", width=100, anchor="center")
         for loan_name in loan_names:
             self.tree.heading(loan_name, text=loan_name)
-            self.tree.column(loan_name, width=140, anchor="center")
+        self.tree.heading("Extra Payment", text="Extra Payment")
+        self.tree.heading("Total Minimum Payment", text="Total Minimum Payment")
         self.tree.heading("Total Payment", text="Total Payment")
-        self.tree.column("Total Payment", width=130, anchor="center")
         self.tree.heading("Total Balance", text="Total Balance")
-        self.tree.column("Total Balance", width=140, anchor="center")
+
+        # Configure column widths
+        self.tree.column("Date", width=115, anchor="center")
+        for loan_name in loan_names:
+            self.tree.column(loan_name, width=200, anchor="e")
+        self.tree.column("Extra Payment", width=120, anchor="e")
+        self.tree.column("Total Minimum Payment", width=150, anchor="e")
+        self.tree.column("Total Payment", width=120, anchor="e")
+        self.tree.column("Total Balance", width=120, anchor="e")
+
+        self.tree.pack(side="left", fill="both", expand=True)
+        tree_scroll.config(command=self.tree.yview)
 
         self.loan_names = loan_names
         self.display_plan(plan)
@@ -68,6 +79,9 @@ class PayoffPlanPopup(tk.Toplevel):
         # Save button
         save_btn = tk.Button(self, text="Save to File", command=lambda: self.save_plan(self.plan, self.loan_names))
         save_btn.pack(pady=5)
+
+        # Bind treeview for extra cash editing
+        self.tree.bind("<Double-1>", self.on_extra_cash_edit)
 
     def update_min_payment_label(self):
         min_payment = sum(loan.monthly_min_payment for loan in self.loans)
@@ -78,30 +92,8 @@ class PayoffPlanPopup(tk.Toplevel):
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        # 1. Column Setup
-        columns = ["Date"] + [f"{name} P→B" for name in self.loan_names] + [
-            "Total Payment", "Total Balance", "Minimum Total Payment", "Adjusted Total Payment"
-        ]
-
-        # 2. Treeview Configuration
-        self.tree["columns"] = columns
-        self.tree.heading("Date", text="Date")
-        self.tree.column("Date", width=100, anchor="center")
-        for name in self.loan_names:
-            col = f"{name} P→B"
-            self.tree.heading(col, text=f"{name} P → B")
-            self.tree.column(col, width=180, anchor="w")
-        self.tree.heading("Total Payment", text="Total Payment")
-        self.tree.column("Total Payment", width=130, anchor="e")
-        self.tree.heading("Total Balance", text="Total Balance")
-        self.tree.column("Total Balance", width=140, anchor="e")
-        self.tree.heading("Minimum Total Payment", text="Minimum Total Payment")
-        self.tree.column("Minimum Total Payment", width=160, anchor="e")
-        self.tree.heading("Adjusted Total Payment", text="Adjusted Total Payment")
-        self.tree.column("Adjusted Total Payment", width=160, anchor="e")
-
-        # 3. Display Logic
-        for period in plan:
+        # Display each period in the plan
+        for idx, period in enumerate(plan):
             row = [period["date"]]
             balances = period.get("balances", {})
             for name in self.loan_names:
@@ -113,11 +105,11 @@ class PayoffPlanPopup(tk.Toplevel):
                 else:
                     cell_text = ""
                 row.append(cell_text)
-            total_payment = sum(period["payments"].get(name, 0) for name in self.loan_names)
-            row.append(f"${total_payment:,.2f}")
-            row.append(f"${period.get('total_balance', 0):,.2f}")
-            row.append(f"${period.get('minimum_total_payment', 0):,.2f}")
-            row.append(f"${period.get('adjusted_total_payment', 0):,.2f}")
+            row.append(period.get("extra_cash", 0))  # Display Extra Payment
+            row.append(f"${period.get('minimum_total_payment', 0):,.2f}")  # Display Total Minimum Payment
+            total_payment = sum(period["payments"].get(name, 0) for name in self.loan_names) + period.get("extra_cash", 0)
+            row.append(f"${total_payment:,.2f}")  # Display Total Payment
+            row.append(f"${period.get('total_balance', 0):,.2f}")  # Display Total Balance
             self.tree.insert("", "end", values=row)
 
     def recalculate_plan(self):
@@ -159,3 +151,81 @@ class PayoffPlanPopup(tk.Toplevel):
             messagebox.showinfo("Export", "Payoff plan exported to payoff_plan.txt")
         except Exception as e:
             messagebox.showerror("Error", f"Could not save file: {e}")
+
+    def on_extra_cash_edit(self, event):
+        # Get the selected row and column
+        selected_item = self.tree.focus()
+        if not selected_item:
+            return
+
+        # Get the column index and ensure it's the "Extra Payment" column
+        col = self.tree.identify_column(event.x)
+        extra_payment_col_index = len(self.loan_names) + 2  # Adjust index for "Extra Payment" column
+        if col != f"#{extra_payment_col_index}":
+            return
+
+        # Get the row index and current value
+        row_index = self.tree.index(selected_item)
+        current_value = self.plan[row_index].get("extra_cash", 0)
+
+        # Get the cell's bounding box
+        bbox = self.tree.bbox(selected_item, col)
+        if not bbox:
+            return
+
+        # Create an Entry widget for editing
+        entry = tk.Entry(self.tree, justify="center")
+        entry.insert(0, str(current_value))
+        entry.place(x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3])
+
+        # Handle Enter key to save the value and recalculate
+        def save_value(event):
+            print("Save value triggered")  # Debug statement
+            try:
+                extra_cash = float(entry.get())
+            except ValueError:
+                messagebox.showerror("Input Error", "Please enter a valid number for extra cash.")
+                entry.destroy()
+                return
+
+            # Update the plan with the extra cash
+            self.plan[row_index]["extra_cash"] = extra_cash
+
+            # Recalculate the plan starting from this row
+            self.recalculate_plan_from_row(row_index)
+
+            # Destroy the Entry widget
+            entry.destroy()
+
+        # Bind Enter key to save the value
+        entry.bind("<Return>", save_value)
+        entry.focus()
+
+    def recalculate_plan_from_row(self, start_row):
+        print(f"Recalculating from row {start_row}")  # Debug statement
+
+        # Preserve the values for rows before the start_row
+        for idx, period in enumerate(self.plan[:start_row]):
+            print(f"Preserving row {idx}, Total Payment: {period['total_payment']}")  # Debug statement
+
+        # Update the plan starting from the specified row
+        for idx, period in enumerate(self.plan[start_row:], start=start_row):
+            extra_cash = period.get("extra_cash", 0)
+            print(f"Row {idx}, Extra Cash: {extra_cash}")  # Debug statement
+
+            # Add extra cash to the total payment for the current period
+            period["total_payment"] = sum(period["payments"].values()) + extra_cash
+
+            # Redistribute the extra cash to the loans
+            extra_pool = extra_cash
+            for loan in sorted(self.loans, key=lambda l: l.interest_rate, reverse=True):  # Example: prioritize by highest interest
+                if loan.current_balance <= 0 or extra_pool <= 0:
+                    continue
+                bonus = min(extra_pool, loan.current_balance)
+                loan.current_balance -= bonus
+                loan.total_paid += bonus
+                period["payments"][loan.name] = period["payments"].get(loan.name, 0.0) + round(bonus, 2)
+                extra_pool -= bonus
+
+        # Refresh the display to show updated rows
+        self.display_plan(self.plan)
