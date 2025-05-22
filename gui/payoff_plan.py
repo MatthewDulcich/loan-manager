@@ -78,31 +78,46 @@ class PayoffPlanPopup(tk.Toplevel):
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        # Update columns to include both payment and balance for each loan
-        columns = ["Date"]
-        for loan_name in self.loan_names:
-            columns.append(f"{loan_name} Payment")
-            columns.append(f"{loan_name} Balance")
-        columns += ["Total Payment", "Total Balance"]
+        # 1. Column Setup
+        columns = ["Date"] + [f"{name} P→B" for name in self.loan_names] + [
+            "Total Payment", "Total Balance", "Minimum Total Payment", "Adjusted Total Payment"
+        ]
 
-        # Update treeview columns
+        # 2. Treeview Configuration
         self.tree["columns"] = columns
-        for col in columns:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, anchor="center", width=140 if "Payment" in col or "Balance" in col else 100)
+        self.tree.heading("Date", text="Date")
+        self.tree.column("Date", width=100, anchor="center")
+        for name in self.loan_names:
+            col = f"{name} P→B"
+            self.tree.heading(col, text=f"{name} P → B")
+            self.tree.column(col, width=180, anchor="w")
+        self.tree.heading("Total Payment", text="Total Payment")
+        self.tree.column("Total Payment", width=130, anchor="e")
+        self.tree.heading("Total Balance", text="Total Balance")
+        self.tree.column("Total Balance", width=140, anchor="e")
+        self.tree.heading("Minimum Total Payment", text="Minimum Total Payment")
+        self.tree.column("Minimum Total Payment", width=160, anchor="e")
+        self.tree.heading("Adjusted Total Payment", text="Adjusted Total Payment")
+        self.tree.column("Adjusted Total Payment", width=160, anchor="e")
 
-        # Insert plan data
+        # 3. Display Logic
         for period in plan:
             row = [period["date"]]
-            total_payment = 0
-            for loan_name in self.loan_names:
-                payment = period["payments"].get(loan_name, 0)
-                balance = period["balances"].get(loan_name, 0)  # Get the balance for the loan
-                row.append(f"${payment:,.2f}" if payment > 0 else "")
-                row.append(f"${balance:,.2f}" if balance > 0 else "")
-                total_payment += payment
+            balances = period.get("balances", {})
+            for name in self.loan_names:
+                payment = period["payments"].get(name, 0)
+                new_bal = balances.get(name, 0)
+                prev_bal = new_bal + payment
+                if payment > 0 or new_bal > 0:
+                    cell_text = f"{prev_bal:,.2f} - {payment:,.2f} = {new_bal:,.2f}"
+                else:
+                    cell_text = ""
+                row.append(cell_text)
+            total_payment = sum(period["payments"].get(name, 0) for name in self.loan_names)
             row.append(f"${total_payment:,.2f}")
             row.append(f"${period.get('total_balance', 0):,.2f}")
+            row.append(f"${period.get('minimum_total_payment', 0):,.2f}")
+            row.append(f"${period.get('adjusted_total_payment', 0):,.2f}")
             self.tree.insert("", "end", values=row)
 
     def recalculate_plan(self):

@@ -24,7 +24,7 @@ class SnowballStrategy(PayoffStrategy):
             List[Dict]: Each dict has keys: "date", "payments" (dict), "total_balance"
         """
         prioritized_loans = self.prioritize(loans)  # Prioritize loans by smallest balance
-        return generate_payment_plan(prioritized_loans)  # Use the shared function
+        return generate_payment_plan(prioritized_loans, user_extra_cash=0)  # Use the shared function
 
 if __name__ == "__main__":
     # Example usage
