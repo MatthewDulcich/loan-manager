@@ -114,8 +114,8 @@ class PayoffPlanPopup(tk.Toplevel):
             minimum_total_payment = period.get("minimum_total_payment", 0)
             row.append(f"${minimum_total_payment:,.2f}")  # Display Total Minimum Payment
 
-            # Total Payment (sum of all loan payments + extra cash)
-            total_payment = sum(period["payments"].values()) + extra_cash
+            # Total Payment (sum of all loan payments)
+            total_payment = sum(period["payments"].values())  # Corrected calculation
             row.append(f"${total_payment:,.2f}")  # Display Total Payment
 
             # Total Balance
