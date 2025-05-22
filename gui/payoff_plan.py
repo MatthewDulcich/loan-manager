@@ -105,11 +105,23 @@ class PayoffPlanPopup(tk.Toplevel):
                 else:
                     cell_text = ""
                 row.append(cell_text)
-            row.append(period.get("extra_cash", 0))  # Display Extra Payment
-            row.append(f"${period.get('minimum_total_payment', 0):,.2f}")  # Display Total Minimum Payment
-            total_payment = sum(period["payments"].get(name, 0) for name in self.loan_names) + period.get("extra_cash", 0)
+            
+            # Extra Payment
+            extra_cash = period.get("extra_cash", 0)
+            row.append(f"${extra_cash:,.2f}")  # Display Extra Payment
+
+            # Total Minimum Payment
+            minimum_total_payment = period.get("minimum_total_payment", 0)
+            row.append(f"${minimum_total_payment:,.2f}")  # Display Total Minimum Payment
+
+            # Total Payment (sum of all loan payments + extra cash)
+            total_payment = sum(period["payments"].values()) + extra_cash
             row.append(f"${total_payment:,.2f}")  # Display Total Payment
-            row.append(f"${period.get('total_balance', 0):,.2f}")  # Display Total Balance
+
+            # Total Balance
+            total_balance = period.get("total_balance", 0)
+            row.append(f"${total_balance:,.2f}")  # Display Total Balance
+
             self.tree.insert("", "end", values=row)
 
     def recalculate_plan(self):
@@ -224,26 +236,71 @@ class PayoffPlanPopup(tk.Toplevel):
             # Calculate payments and update balances for this row
             period["payments"] = {}
             ending_balances = {}  # Track ending balances for this row
+            total_extra_payments = 0  # Track total extra payments for this period
+            freed_min_payments = 0  # Track freed minimum payments from paid-off loans
+
+            # Step 1: Pay minimum payments and track freed-up money
             for loan in self.loans:
                 loan_name = loan.name
                 starting_balance = starting_balances[loan_name]
 
-                # Apply the minimum payment and extra cash (if any)
+                # Skip loans that are already paid off
+                if starting_balance <= 0:
+                    period["payments"][loan_name] = 0.0
+                    ending_balances[loan_name] = 0.0
+                    freed_min_payments += loan.monthly_min_payment  # Add freed minimum payment
+                    continue
+
+                # Apply the minimum payment
                 payment = loan.monthly_min_payment
+                if payment > starting_balance:
+                    payment = starting_balance  # Cap payment at the remaining balance
+
+                # Apply extra cash if available
                 if extra_cash > 0:
                     extra_payment = min(extra_cash, starting_balance - payment)
                     payment += extra_payment
                     extra_cash -= extra_payment
+                    total_extra_payments += extra_payment  # Track extra payments
 
                 # Calculate the new balance after the payment
                 new_balance = starting_balance - payment
                 period["payments"][loan_name] = round(payment, 2)
-                ending_balances[loan_name] = round(new_balance, 2)
+                ending_balances[loan_name] = max(round(new_balance, 2), 0.0)  # Ensure balance does not go negative
 
-            # Update the balances for the loans in this period
+            # Step 2: Redistribute freed-up money (freed minimum payments + leftover extra cash)
+            extra_pool = extra_cash + freed_min_payments
+            for loan in sorted(self.loans, key=lambda l: ending_balances[l.name]):  # Prioritize smallest balances
+                loan_name = loan.name
+                if extra_pool <= 0 or ending_balances[loan_name] <= 0:
+                    continue  # Skip loans that are already paid off or if no extra money is left
+                bonus_payment = min(extra_pool, ending_balances[loan_name])
+                ending_balances[loan_name] -= bonus_payment
+                period["payments"][loan_name] += round(bonus_payment, 2)
+                extra_pool -= bonus_payment
+                total_extra_payments += bonus_payment  # Track redistributed payments
+
+            # Step 3: Ensure total payment matches the fixed budget
+            fixed_budget = sum(loan.monthly_min_payment for loan in self.loans) + period.get("extra_cash", 0)
+            actual_total = sum(period["payments"].values())
+            if actual_total < fixed_budget:
+                diff = fixed_budget - actual_total
+                for loan in sorted(self.loans, key=lambda l: ending_balances[l.name]):  # Prioritize smallest balances
+                    loan_name = loan.name
+                    if diff <= 0 or ending_balances[loan_name] <= 0:
+                        continue
+                    bonus_payment = min(diff, ending_balances[loan_name])
+                    ending_balances[loan_name] -= bonus_payment
+                    period["payments"][loan_name] += round(bonus_payment, 2)
+                    diff -= bonus_payment
+
+            # Step 4: Update the balances for the loans in this period
             period["balances"] = ending_balances
 
-            # Propagate the ending balances to the next row
+            # Step 5: Update the total payment for this period
+            period["total_payment"] = sum(period["payments"].values())
+
+            # Step 6: Propagate the ending balances to the next row
             if idx + 1 < len(self.plan):
                 self.plan[idx + 1]["balances"] = ending_balances
 
