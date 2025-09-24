@@ -4,6 +4,7 @@ import csv
 import os
 from database.db import Database
 from gui.loan_entry import LoanEntryForm
+from gui.salary_calculator import SalaryCalculatorPopup
 from models.loan import Loan
 from strategies.snowball import SnowballStrategy
 from strategies.avalanche import AvalancheStrategy
@@ -29,6 +30,10 @@ class LoanManagerApp(tk.Tk):
         # Export button
         export_button = tk.Button(self, text="Export Payoff Plan", command=self.export_payoff_plan)
         export_button.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+
+        # Salary Calculator button
+        salary_calc_button = tk.Button(self, text="Salary Calculator", command=self.open_salary_calculator)
+        salary_calc_button.grid(row=0, column=2, padx=10, pady=5, sticky="w")
 
         # Treeview for loans
         self.tree = ttk.Treeview(self, columns=("ID", "Name", "Principal", "Balance", "Interest Rate", "Min Payment", "Extra Payment", "First Due Date"), show='headings')
@@ -239,6 +244,11 @@ A template file 'loan_template.csv' has been created in your project directory."
             PayoffPlanPopup(self, plan, loans)
         else:
             tk.messagebox.showerror("Error", "Selected strategy does not support payoff plan export.")
+
+    def open_salary_calculator(self):
+        """Open the salary calculator popup"""
+        loans = self.get_loans()
+        SalaryCalculatorPopup(self, loans)
 
 if __name__ == "__main__":
     app = LoanManagerApp()

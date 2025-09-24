@@ -8,6 +8,7 @@ The **Loan Manager Application** is a Python-based tool designed to help users m
 
 - **Loan Management**: Add, view, and delete loans with details such as principal, interest rate, and minimum monthly payment.
 - **CSV Import**: Import multiple loans from a CSV file for bulk data entry.
+- **Salary Calculator**: Calculate the salary needed to cover all expenses, loan payments, taxes, and tithe.
 - **Repayment Strategies**:
   - **Snowball Strategy**: Prioritizes loans with the smallest balances.
   - **Avalanche Strategy**: Prioritizes loans with the highest interest rates.
@@ -140,6 +141,59 @@ A template CSV file (`loan_template.csv`) is included in the project directory f
 
 ### Exporting a Payoff Plan
 - Click **"Save to File"** in the payoff plan popup to save the plan as a text file (`payoff_plan.txt`).
+
+### Using the Salary Calculator
+1. Click the **"Salary Calculator"** button in the main interface.
+2. Enter your monthly expenses in the following categories:
+   - **Living Expenses**: Rent/mortgage, car payment, insurance, food, utilities, phone/internet, and other monthly expenses
+   - **Loan Payments**: The calculator automatically pulls your total loan payments from loaded loans, but you can adjust this and add extra loan payments
+   - **Savings & Extras**: Emergency fund/savings and entertainment/personal spending
+   - **Retirement & Investment Contributions**: 401(k), Traditional IRA, Roth IRA, HSA, 529 Education Plan, and other investments
+   - **Financial Cushion**: Specify minimum amount of money you want left over each month for unexpected expenses
+   - **Financial Cushion**: Specify the minimum amount of money you want left over each month for unexpected expenses, discretionary spending, or additional financial security
+3. Choose your tax calculation method:
+   - **Progressive Tax**: Uses actual 2025 federal tax brackets and state tax rates for accurate calculations
+     - Select your filing status (Single, Married Filing Jointly, etc.)
+     - Choose your state for state tax calculations
+   - **Flat Rate**: Enter custom flat tax percentages for simplified calculations
+4. Configure tithe settings:
+   - Enable/disable tithe calculation
+   - Set tithe percentage (default 10%)
+   - Choose whether tithe is calculated on gross or net income
+5. Click **"🧮 Calculate Required Salary"** to see:
+   - Required annual salary
+   - Required hourly wage (based on 40 hours/week)
+   - Detailed monthly breakdown with progressive tax calculations
+   - Federal, state, and FICA tax breakdowns
+   - Pre-tax contribution deductions (401k, Traditional IRA, HSA)
+   - Tithe calculation (if enabled)
+   - Net income after all deductions
+   - Money left over after expenses (including your specified minimum cushion)
+6. Click **"💾 Save Calculation Results"** to export your results:
+   - Save as formatted text file (.txt) for easy reading
+   - Save as CSV file (.csv) for spreadsheet analysis
+   - Includes all inputs, calculations, and detailed breakdowns
+   - Timestamped filename for easy organization
+
+#### Advanced Tax Features:
+- **2025 Federal Tax Brackets**: Accurately calculates taxes using current progressive tax brackets
+- **State Tax Integration**: Includes tax rates for all 50 states
+- **FICA Calculations**: Properly handles Social Security, Medicare, and Additional Medicare taxes
+- **Pre-tax Contributions**: Properly reduces taxable income for 401(k), Traditional IRA, and HSA contributions
+- **After-tax Contributions**: Accounts for Roth IRA, 529 plans, and other investments paid with net income
+- **Tithe Options**: Calculate tithe on gross or net income with customizable rates
+- **Filing Status Support**: Different calculations for Single, Married Filing Jointly, Married Filing Separately, and Head of Household
+- **Hourly Wage Calculation**: Automatically calculates required hourly wage assuming 40 hours/week (2,080 hours annually)
+
+#### Supported Retirement Accounts:
+- **401(k)**: Pre-tax contribution that reduces federal and state taxable income
+- **Traditional IRA**: Pre-tax contribution with tax-deferred growth
+- **Roth IRA**: After-tax contribution with tax-free growth
+- **HSA (Health Savings Account)**: Triple tax advantage - pre-tax contribution, tax-free growth, tax-free withdrawals for medical expenses
+- **529 Education Plans**: After-tax contribution for education expenses
+- **Other Investments**: General investment contributions paid with after-tax income
+
+The salary calculator provides the most accurate salary requirements by using real tax brackets, properly handling pre-tax vs. after-tax contributions, and accounting for all deductions including tithe obligations.
 
 ---
 
