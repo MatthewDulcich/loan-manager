@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 
 database/loans.db
+my_loans.csv
