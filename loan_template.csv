@@ -1,0 +1,4 @@
+name,principal,current_balance,interest_rate,monthly_min_payment,extra_payment,first_due_date,lender,loan_term_months,notes
+Student Loan,25000.00,22500.50,4.25,350.00,0.00,2025-01-15,Federal Direct,120,Federal student loan
+Car Loan,18000.00,15200.75,6.50,425.00,50.00,2025-02-01,Chase Bank,60,2022 Honda Civic
+Credit Card,5500.00,3200.25,18.99,125.00,0.00,2025-01-10,Capital One,,High interest debt
