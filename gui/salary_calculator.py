@@ -949,7 +949,7 @@ class SalaryCalculatorPopup(tk.Toplevel):
                     ("CSV files", "*.csv"),
                     ("All files", "*.*")
                 ],
-                initialname=f"salary_calculation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                initialfile=f"salary_calculation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             )
             
             if not file_path:

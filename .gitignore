@@ -5,3 +5,4 @@ __pycache__/
 
 database/loans.db
 my_loans.csv
+salary_calculation_*.txt
