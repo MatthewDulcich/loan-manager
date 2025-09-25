@@ -48,9 +48,17 @@ class PayoffPlanPopup(tk.Toplevel):
 
         tree_frame = tk.Frame(self)
         tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-        tree_scroll = tk.Scrollbar(tree_frame)
-        tree_scroll.pack(side="right", fill="y")
-        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=20)
+        
+        # Vertical scrollbar
+        v_scrollbar = tk.Scrollbar(tree_frame, orient="vertical")
+        v_scrollbar.pack(side="right", fill="y")
+        
+        # Horizontal scrollbar
+        h_scrollbar = tk.Scrollbar(tree_frame, orient="horizontal")
+        h_scrollbar.pack(side="bottom", fill="x")
+        
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=20,
+                                yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
 
         # Configure column headings
         self.tree.heading("Date", text="Date")
@@ -71,7 +79,10 @@ class PayoffPlanPopup(tk.Toplevel):
         self.tree.column("Total Balance", width=120, anchor="e")
 
         self.tree.pack(side="left", fill="both", expand=True)
-        tree_scroll.config(command=self.tree.yview)
+        
+        # Connect scrollbars to tree view
+        v_scrollbar.config(command=self.tree.yview)
+        h_scrollbar.config(command=self.tree.xview)
 
         self.loan_names = loan_names
         self.display_plan(plan)
@@ -132,15 +143,18 @@ class PayoffPlanPopup(tk.Toplevel):
             return
 
         if self.recalc_callback:
+            # Use the callback if provided
             new_plan = self.recalc_callback(extra_cash)
         elif self.strategy:
-            for loan in self.loans:
-                loan.extra_payment = extra_cash
-            new_plan = self.strategy.generate_payment_plan(self.loans)
+            # Generate a completely fresh payment plan from scratch using the strategy
+            # This will start with the original loan balances and create a new plan
+            new_plan = self.strategy.generate_payment_plan(self.loans, extra_cash=extra_cash)
         else:
+            # Fallback if no strategy is available
             messagebox.showinfo("Recalculate", f"Would recalculate with extra cash: ${extra_cash:,.2f}")
             return
 
+        # Replace the entire plan with the new one (complete recalculation from scratch)
         self.plan = new_plan
         self.display_plan(new_plan)
         self.update_min_payment_label()

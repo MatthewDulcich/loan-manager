@@ -240,8 +240,8 @@ A template file 'loan_template.csv' has been created in your project directory."
         loans = self.get_loans()
         strategy = self.get_strategy()
         if hasattr(strategy, "generate_payment_plan"):
-            plan = strategy.generate_payment_plan(loans)
-            PayoffPlanPopup(self, plan, loans)
+            plan = strategy.generate_payment_plan(loans, extra_cash=0.0)
+            PayoffPlanPopup(self, plan, loans, strategy=strategy)
         else:
             tk.messagebox.showerror("Error", "Selected strategy does not support payoff plan export.")
 

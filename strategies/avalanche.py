@@ -13,18 +13,19 @@ class AvalancheStrategy(PayoffStrategy):
         # Sort by interest_rate descending (highest first)
         return sorted(loans, key=lambda loan: loan.interest_rate, reverse=True)
 
-    def generate_payment_plan(self, loans: List[Loan]) -> List[Dict]:
+    def generate_payment_plan(self, loans: List[Loan], extra_cash: float = 0.0) -> List[Dict]:
         """
         Generate a payment plan using the Avalanche strategy.
 
         Args:
             loans (List[Loan]): A list of Loan objects.
+            extra_cash (float): Additional monthly cash available for loan payments.
 
         Returns:
             List[Dict]: Each dict has keys: "date", "payments" (dict), "total_balance"
         """
-        prioritized_loans = self.prioritize(loans)  # Prioritize loans by interest rate
-        return generate_payment_plan(prioritized_loans)  # Use the shared function
+        prioritized_loans = self.prioritize(loans)  # Prioritize loans by highest interest rate
+        return generate_payment_plan(prioritized_loans, user_extra_cash=extra_cash)  # Use the shared function
 
 if __name__ == "__main__":
     # Example usage
