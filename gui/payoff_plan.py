@@ -278,19 +278,36 @@ class PayoffPlanPopup(tk.Toplevel):
         for row_idx in range(start_row, len(self.plan)):
             period = self.plan[row_idx]
             
+            # For periods after start_row, update working_loans with balances from previous period
+            if row_idx > start_row:
+                prev_period = self.plan[row_idx - 1]
+                for loan in working_loans:
+                    loan.current_balance = prev_period["balances"].get(loan.name, 0)
+                    # Update adjusted_min_payment based on current balance
+                    loan.adjusted_min_payment = loan.monthly_min_payment if loan.current_balance > 0 else 0
+            
             # Get the extra payment for this specific period
             # Use stored row-specific value if it exists, otherwise use global
             if "row_extra_payment" in period:
-                period_extra_cash = period["row_extra_payment"]
+                requested_extra_cash = period["row_extra_payment"]
             else:
-                period_extra_cash = global_extra_cash
-            
-            # Calculate fixed budget for this period
-            adjusted_total_payment = minimum_total_payment + period_extra_cash
-            fixed_budget = adjusted_total_payment
+                requested_extra_cash = global_extra_cash
             
             # Sort loans by balance (snowball method)
             working_loans.sort(key=lambda l: l.current_balance)
+            
+            # Calculate the maximum we could possibly need (total balance + interest)
+            max_needed = 0.0
+            for loan in working_loans:
+                if loan.current_balance > 0:
+                    interest = loan.current_balance * (loan.interest_rate / 100 / 12)
+                    max_needed += loan.current_balance + interest
+            
+            # Cap the extra payment at what's actually needed
+            effective_extra_cash = min(requested_extra_cash, max(0, max_needed - minimum_total_payment))
+            
+            # Calculate the desired budget for this period
+            adjusted_total_payment = minimum_total_payment + effective_extra_cash
             
             period_payments = {}
             freed = 0.0
@@ -320,7 +337,7 @@ class PayoffPlanPopup(tk.Toplevel):
                     loan.adjusted_min_payment = 0.0
 
             # 2) Build extra pool and redistribute immediately (exact logic from generate_payment_plan)
-            extra_pool = period_extra_cash + freed
+            extra_pool = effective_extra_cash + freed
             for loan in working_loans:
                 if loan.current_balance <= 0 or extra_pool <= 0:
                     continue
@@ -329,22 +346,25 @@ class PayoffPlanPopup(tk.Toplevel):
                 period_payments[loan.name] = period_payments.get(loan.name, 0.0) + round(bonus, 2)
                 extra_pool -= bonus
 
-            # 2a) Ensure total_payment equals fixed_budget (exact logic from generate_payment_plan)
+            # 2a) Apply any remaining budget if needed, but don't exceed what's owed
             actual_total = sum(period_payments.values())
-            if actual_total < fixed_budget:
-                diff = fixed_budget - actual_total
+            remaining_budget = adjusted_total_payment - actual_total
+            
+            # Only try to spend more if we have remaining budget and remaining balances
+            if remaining_budget > 0:
                 for loan in working_loans:
-                    if loan.current_balance <= 0 or diff <= 0:
+                    if loan.current_balance <= 0 or remaining_budget <= 0:
                         continue
-                    bonus = min(diff, loan.current_balance)
+                    bonus = min(remaining_budget, loan.current_balance)
                     loan.current_balance -= bonus
                     period_payments[loan.name] = period_payments.get(loan.name, 0.0) + round(bonus, 2)
-                    diff -= bonus
+                    remaining_budget -= bonus
 
             # 3) Update the period with new calculations
+            final_total_payment = sum(period_payments.values())
             period["payments"] = period_payments
             period["balances"] = {loan.name: round(max(loan.current_balance, 0), 2) for loan in working_loans}
-            period["total_payment"] = round(fixed_budget, 2)
+            period["total_payment"] = round(final_total_payment, 2)
             period["total_balance"] = round(sum(max(loan.current_balance, 0) for loan in working_loans), 2)
             period["minimum_total_payment"] = round(minimum_total_payment, 2)
             period["adjusted_total_payment"] = round(adjusted_total_payment, 2)
